@@ -10,6 +10,8 @@ dist/
 
 # Env files
 *.env
+microservice1/.env
+microservice2/.env
 
 # VS Code / IDE
 .vscode/
