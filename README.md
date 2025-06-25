@@ -18,13 +18,12 @@
 
 ## 📁 Project Structure
 
-```
 FS_Project/
 ├── frontend/         # React UI for form submission
 ├── microservice1/    # FastAPI producer service (form ingestion)
 ├── microservice2/    # Kafka consumer & email sender
 └── README.md
-```
+
 
 ---
 
@@ -35,77 +34,38 @@ FS_Project/
 ```bash
 git clone https://github.com/<your-username>/fs-project.git
 cd fs-project
-```
 
----
 
-### 2. Frontend Setup
 
-```bash
+
 cd frontend
 npm install
 npm start
-```
 
----
 
-### 3. Microservice 1 – FastAPI Producer
 
-```bash
 cd ../microservice1
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-
 uvicorn main:app --reload
-```
 
----
 
-### 4. Microservice 2 – Kafka Consumer & Email Sender
-
-```bash
 cd ../microservice2
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 python3 consumer.py
-```
 
----
-
-## 🔐 Environment Variables
-
-Create a `.env` file in both `microservice1/` and `microservice2/` directories based on the `.env.example` templates.
-
-### `microservice1/.env`
-
-```env
-DB_URL=postgresql://<user>:<password>@localhost:5432/<dbname>
+microservice1/.env
+DB_URL=postgresql://<db_user>:<db_password>@localhost:5432/<db_name>
 KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 TOPIC_NAME=form-submissions
-```
 
-### `microservice2/.env`
-
-```env
+microservice2/.env
 KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 TOPIC_NAME=form-submissions
 SMTP_SERVER=smtp.gmail.com
 SMTP_PORT=587
-SENDER_EMAIL=your@email.com
-SENDER_PASSWORD=your-app-password
-```
-
-> 🔒 *Never commit real secrets — use `.env` and `.gitignore` wisely.*
-
----
-
-## 📬 Use Case
-
-**CANON** is perfect for:
-- Customer-facing "Contact Us" forms
-- Automated intake and routing of inquiries
-- Real-time notifications for support teams or customer replies
-- Future CRM integration pipelines
-
+SENDER_EMAIL=<your_email>
+SENDER_PASSWORD=<your_app_password>
