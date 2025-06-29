@@ -57,12 +57,18 @@ while True:
     msg = consumer.poll(1.0)
     if msg is None:
         continue
+
     if msg.error():
         print("❌ Kafka error:", msg.error())
         continue
 
+    msg_value = msg.value()
+    if not msg_value:
+        print("⚠️ Skipped empty message.")
+        continue
+
     try:
-        data = json.loads(msg.value().decode('utf-8'))
+        data = json.loads(msg_value.decode('utf-8'))
         print("📨 Received message:", data)
 
         # Compose confirmation email for customer
@@ -102,8 +108,17 @@ The CANON Team
         if submission_id:
             update_submission_status(submission_id, 'emailed', None)
 
+    except json.JSONDecodeError as e:
+        print("❌ JSON decode error:", str(e))
+        continue
+
     except Exception as e:
         print("❌ Failed to process message:", str(e))
-        submission_id = data.get('id')
-        if submission_id:
-            update_submission_status(submission_id, 'failed', str(e))
+        try:
+            if 'data' in locals():
+                submission_id = data.get('id')
+                if submission_id:
+                    update_submission_status(submission_id, 'failed', str(e))
+        except Exception as nested:
+            print("⚠️ Also failed updating DB:", str(nested))
+        continue
