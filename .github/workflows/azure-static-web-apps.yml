@@ -12,6 +12,21 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm install
+
+      - name: Build app
+        run: |
+          cd frontend
+          npm run build
+
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -19,5 +34,3 @@ jobs:
           action: "upload"
           app_location: "frontend"
           output_location: "build"
-
-          #
