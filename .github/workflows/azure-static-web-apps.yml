@@ -10,10 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Build and Deploy Job
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          submodules: false
+      - uses: actions/checkout@v3
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -37,4 +34,4 @@ jobs:
           action: "upload"
           app_location: "frontend"
           api_location: ""
-          output_location: "build"
+          output_location: "frontend/build"
