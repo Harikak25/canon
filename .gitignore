@@ -16,3 +16,16 @@ microservice2/.env
 # VS Code / IDE
 .vscode/
 .idea/
+
+# Logs
+*.log
+logs/
+
+# macOS
+.DS_Store
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log

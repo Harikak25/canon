@@ -1,66 +1,109 @@
-from confluent_kafka import Consumer
+import os
 import json
 import smtplib
+import psycopg2
 from email.message import EmailMessage
+from dotenv import load_dotenv
+from confluent_kafka import Consumer
 
-# --- Kafka Consumer Setup ---
-consumer = Consumer({
-    'bootstrap.servers': 'localhost:9092',
+# Load env vars
+load_dotenv()
+
+# Kafka configuration
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
+KAFKA_API_KEY = os.getenv("KAFKA_API_KEY")
+KAFKA_API_SECRET = os.getenv("KAFKA_API_SECRET")
+TOPIC_NAME = os.getenv("TOPIC_NAME")
+
+# Email configuration
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+SMTP_PORT = int(os.getenv("SMTP_PORT"))
+SENDER_EMAIL = os.getenv("SENDER_EMAIL")
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
+
+# Database configuration
+DB_URL = os.getenv("DB_URL")
+
+# Kafka Consumer config
+consumer_conf = {
+    'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS,
+    'security.protocol': 'SASL_SSL',
+    'sasl.mechanisms': 'PLAIN',
+    'sasl.username': KAFKA_API_KEY,
+    'sasl.password': KAFKA_API_SECRET,
     'group.id': 'form-consumer-group',
     'auto.offset.reset': 'earliest'
-})
+}
 
-consumer.subscribe(['form-submissions'])
+consumer = Consumer(consumer_conf)
+consumer.subscribe([TOPIC_NAME])
 
-print("👂 Listening for messages on 'form-submissions'...")
+print("👂 Listening for messages on:", TOPIC_NAME)
 
-# --- Email Configuration ---
-SMTP_SERVER = 'smtp.gmail.com'
-SMTP_PORT = 587
-SENDER_EMAIL = 'harikabhavani.hb@gmail.com'
-SENDER_PASSWORD = 'alzeogtmbrackrrj'  # ✅ use actual Gmail app password here
+def update_submission_status(submission_id, status, error_message=None):
+    conn = psycopg2.connect(DB_URL)
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE submissions
+        SET processed_status = %s,
+            last_error_message = %s
+        WHERE id = %s
+    """, (status, error_message, submission_id))
+    conn.commit()
+    cur.close()
+    conn.close()
 
 while True:
     msg = consumer.poll(1.0)
     if msg is None:
         continue
     if msg.error():
-        print("❌ Error:", msg.error())
+        print("❌ Kafka error:", msg.error())
         continue
 
     try:
         data = json.loads(msg.value().decode('utf-8'))
-        print("📨 Received message:")
-        print("🧾 Raw message data:", data)
+        print("📨 Received message:", data)
 
-        for k, v in data.items():
-            print(f"  {k}: {v}")
-
-        # --- Compose Email ---
+        # Compose confirmation email for customer
         email_msg = EmailMessage()
-        email_msg['Subject'] = f"Form Submission: {data.get('subject', 'No Subject')}"
+        email_msg['Subject'] = f"Confirmation: We received your message about '{data.get('subject', 'No Subject')}'"
         email_msg['From'] = SENDER_EMAIL
-        email_msg['To'] = data.get('email', SENDER_EMAIL)  # fallback to sender if missing
+        email_msg['To'] = data.get('email', SENDER_EMAIL)
 
-        content = f"""
-You received a new submission:
+        body = f"""
+Hi {data.get('first_name', '')},
+
+Thanks for reaching out to us via CANON. We've received your message with the following details:
 
 Name: {data.get('first_name', '')} {data.get('last_name', '')}
 Email: {data.get('email', '')}
+Urgent: {'Yes' if data.get('urgent') else 'No'}
 Subject: {data.get('subject', '')}
 Message: {data.get('message', '')}
 Attachment: {data.get('attachment_name', 'N/A')} ({data.get('attachment_type', '')})
-"""
-        email_msg.set_content(content)
 
-        print("📧 Preparing to send email...")
+We’ll get back to you as soon as possible.
+
+Best regards,
+The CANON Team
+"""
+        email_msg.set_content(body)
 
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
             smtp.starttls()
             smtp.login(SENDER_EMAIL, SENDER_PASSWORD)
             smtp.send_message(email_msg)
 
-        print("✅ Email sent successfully.")
+        print("✅ Confirmation email sent.")
 
-    except BaseException as e:
-        print("❌ Failed to send email:", e)
+        # Update DB as emailed
+        submission_id = data.get('id')
+        if submission_id:
+            update_submission_status(submission_id, 'emailed', None)
+
+    except Exception as e:
+        print("❌ Failed to process message:", str(e))
+        submission_id = data.get('id')
+        if submission_id:
+            update_submission_status(submission_id, 'failed', str(e))
