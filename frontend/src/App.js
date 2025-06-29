@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import './App.css';
-import bgImage from './assets/wpi.jpg';
+import bgImage from './assets/WPI.jpg';
 
 function App() {
   const [form, setForm] = useState({
